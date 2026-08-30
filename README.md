@@ -60,7 +60,7 @@ pip install mutagen requests
 文件名约定：`歌曲标题_歌手.ext` 或 `歌曲标题 - 歌手.ext`（多个歌手用 ` / ` 分隔）。
 
 ```bash
-# 预演：只显示将要写入的元数据，不写入任何内容
+# 预演：只显示将要写入的元数据，不写入任何内容 
 python fix_metadata.py --dry
 
 # 正式写入（默认目录：~/Desktop/music）
