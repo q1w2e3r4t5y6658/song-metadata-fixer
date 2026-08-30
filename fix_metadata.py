@@ -685,6 +685,7 @@ class MetadataFixer:
                 new["TDRC"] = str(year)
 
             for fid, val in new.items():
+                tags.delall(fid)
                 tags.add(
                     {
                         "TIT2": TIT2(encoding=3, text=[val]),
