@@ -32,6 +32,7 @@ from textual.widgets import (
     Button,
     Checkbox,
     DataTable,
+    DirectoryTree,
     Footer,
     Header,
     Input,
@@ -849,6 +850,56 @@ STATE = FixerState()
 #  TUI — Screens
 # ═══════════════════════════════════════════════════════════════════════════
 
+
+class FolderPickerScreen(Screen):
+    """Folder picker using DirectoryTree."""
+
+    CSS = """
+    Screen { align: center middle; }
+    #picker_box { width: 80; height: 85%; padding: 1 2; border: solid $accent; }
+    #picker_title { text-align: center; text-style: bold; margin-bottom: 1; }
+    #dir_tree { height: 1fr; border: solid $surface; }
+    #path_bar { height: 3; margin: 1 0; padding: 0 1; background: $surface; }
+    #picker_btns { margin-top: 1; align: center middle; }
+    #picker_btns Button { margin: 0 1; }
+    """
+
+    def __init__(self, on_select: Callable[[Path], None] | None = None) -> None:
+        super().__init__()
+        self._on_select = on_select
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="picker_box"):
+            yield Static("选择音乐文件夹", id="picker_title")
+            yield Static(str(STATE.music_dir), id="path_bar")
+            yield DirectoryTree(str(STATE.music_dir), id="dir_tree")
+            with Horizontal(id="picker_btns"):
+                yield Button("选择当前文件夹", id="pick", variant="primary")
+                yield Button("b 返回", id="back")
+                yield Button("q 退出", id="quit")
+
+    def on_directory_tree_directory_selected(self, event: DirectoryTree.DirectorySelected) -> None:
+        self.query_one("#path_bar", Static).update(str(event.path))
+
+    def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected) -> None:
+        p = Path(event.path)
+        self.query_one("#path_bar", Static).update(str(p.parent))
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "pick":
+            path_str = self.query_one("#path_bar", Static).renderable
+            selected = Path(str(path_str))
+            if not selected.is_dir():
+                selected = selected.parent
+            STATE.music_dir = selected
+            if self._on_select:
+                self._on_select(selected)
+            self.app.pop_screen()
+        elif event.button.id == "back":
+            self.app.pop_screen()
+        elif event.button.id == "quit":
+            self.app.exit()
+
 class ScanScreen(Screen):
     CSS = """
     Screen { align: center middle; }
@@ -867,9 +918,11 @@ class ScanScreen(Screen):
     def compose(self) -> ComposeResult:
         with Vertical(id="box"):
             yield Static("扫描结果 & 文件名解析", id="title")
+            yield Label(f"当前目录：{STATE.music_dir}", id="path_info")
             yield Label("", id="info")
             yield RadioSet(id="strat_radio")
             with Horizontal(id="btn_row"):
+                yield Button("选择文件夹", id="pick_dir", variant="default")
                 yield Button("确认", id="confirm", variant="primary")
                 yield Button("q 退出", id="quit")
 
@@ -896,8 +949,28 @@ class ScanScreen(Screen):
             idx = radio.pressed_index or 0
             STATE.strategy = self._strategies[idx][0]
             self.app.push_screen(ScopeScreen())
+        elif event.button.id == "pick_dir":
+            self.app.push_screen(FolderPickerScreen(on_select=self._on_dir_picked))
         elif event.button.id == "quit":
             self.app.exit()
+
+    def _on_dir_picked(self, path: Path) -> None:
+        STATE.files = MetadataFixer(STATE.music_dir).scan_files()
+        total = len(STATE.files)
+        self.query_one("#path_info", Label).update(f"当前目录：{STATE.music_dir}")
+        self.query_one("#info", Label).update(f"扫描到 {total} 个音频文件")
+        self._strategies = detect_best_strategy(STATE.files)
+        radio = self.query_one("#strat_radio", RadioSet)
+        radio.clear_options()
+        self._recommended_idx = 0
+        for i, (_key, display, count) in enumerate(self._strategies):
+            label = f"{display}  (匹配 {count} 个)"
+            if i == 0 and count > 0:
+                label += "  ← 推荐"
+                self._recommended_idx = i
+            radio.append_option(RadioButton(label))
+        if self._strategies:
+            radio._selected = self._recommended_idx
 
 
 class ScopeScreen(Screen):
