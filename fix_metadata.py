@@ -121,7 +121,7 @@ def netease_search(query):
                 'source': 'netease',
                 'title': s.get('name', ''),
                 'artists': arts,
-                'artist': ', '.join(a for a in arts if a),
+                'artist': ' / '.join(a for a in arts if a),
                 'album': al.get('name', ''),
                 'year': year,
                 'sid': s.get('id'),
@@ -167,7 +167,7 @@ def qq_search(query):
             'source': 'qqmusic',
             'title': s.get('songname', ''),
             'artists': arts,
-            'artist': ', '.join(a for a in arts if a),
+            'artist': ' / '.join(a for a in arts if a),
             'album': s.get('albumname', ''),
             'year': year,
             'sid': s.get('songmid'),
@@ -196,7 +196,7 @@ def kugou_search(query):
             'source': 'kugou',
             'title': s.get('SongName', ''),
             'artists': arts,
-            'artist': ', '.join(arts),
+            'artist': ' / '.join(arts),
             'album': album,
             'year': year,
             'sid': s.get('FileHash'),
@@ -292,7 +292,7 @@ def merge_artist(q_artist, res_artist, n_artists):
         add.append(t)
     if not add:
         return res_artist
-    return (res_artist + ', ' + ', '.join(add)) if res_artist else ', '.join(add)
+    return (res_artist + ' / ' + ' / '.join(add)) if res_artist else ' / '.join(add)
 
 def best_match(q_title, q_artist, results):
     best = None
