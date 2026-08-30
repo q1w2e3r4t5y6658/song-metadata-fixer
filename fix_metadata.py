@@ -794,7 +794,7 @@ class MetadataFixer:
         if not self.base_dir.is_dir():
             return []
         return sorted(
-            f.name for f in self.base_dir.iterdir()
+            str(f.relative_to(self.base_dir)) for f in self.base_dir.rglob("*")
             if f.suffix.lower() in AUDIO_EXTS and f.is_file()
         )
 
