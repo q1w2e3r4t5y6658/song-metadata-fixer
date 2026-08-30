@@ -779,10 +779,10 @@ class MetadataFixer:
         for i, fname in enumerate(files, 1):
             path = self.base_dir / fname
             base, q_title, q_artist, confidence = self._parse_fname(fname)
-            log("[%d/%d] %s", i, len(files), fname)
+            log.info("[%d/%d] %s", i, len(files), fname)
 
             if not confidence:
-                log("   -> SKIP (low confidence filename, no clear delimiter)")
+                log.info("   -> SKIP (low confidence filename, no clear delimiter)")
                 report.append({"file": fname, "status": "skipped", "reason": "low_confidence"})
                 skip += 1
                 continue
@@ -794,12 +794,12 @@ class MetadataFixer:
                 try:
                     info = self._find_metadata(q_title, q_artist)
                 except Exception as exc:
-                    log("   -> ERROR: %s", exc)
+                    log.info("   -> ERROR: %s", exc)
                     report.append({"file": fname, "status": "error", "error": str(exc)})
                     fail += 1
                     continue
                 if info:
-                    log(
+                    log.info(
                         "   -> [%s] %s / %s / %s  (score=%.2f)",
                         info["source"], info["title"], info["artist"],
                         info.get("album") or "-", info.get("score", 0),
@@ -807,7 +807,7 @@ class MetadataFixer:
                     report.append({"file": fname, "status": "match", "result": info})
                     ok += 1
                 else:
-                    log("   -> NO MATCH")
+                    log.info("   -> NO MATCH")
                     report.append({"file": fname, "status": "nomatch"})
                     skip += 1
                 continue
@@ -816,12 +816,12 @@ class MetadataFixer:
             try:
                 info = self._find_metadata(q_title, q_artist)
                 if not info:
-                    log("   -> NO MATCH, skipped")
+                    log.info("   -> NO MATCH, skipped")
                     report.append({"file": fname, "status": "skipped", "reason": "no match"})
                     skip += 1
                     continue
                 self._write_tags(path, info, base)
-                log(
+                log.info(
                     "   -> WROTE [%s] %s / %s / %s",
                     info["source"], info["title"], info["artist"],
                     info.get("album") or "-",
@@ -829,7 +829,7 @@ class MetadataFixer:
                 report.append({"file": fname, "status": "fixed", "result": info})
                 ok += 1
             except Exception as exc:
-                log("   -> ERROR: %s", exc)
+                log.info("   -> ERROR: %s", exc)
                 report.append({"file": fname, "status": "error", "error": str(exc)})
                 fail += 1
             time.sleep(0.1)
@@ -853,9 +853,9 @@ class MetadataFixer:
             except Exception as exc:
                 log.warning("Failed to write backup: %s", exc)
 
-        log("")
-        log("=== done: fixed=%d skipped=%d failed=%d ===", ok, skip, fail)
-        log("report: %s", self.report_file)
+        log.info("")
+        log.info("=== done: fixed=%d skipped=%d failed=%d ===", ok, skip, fail)
+        log.info("report: %s", self.report_file)
 
 
 # ─── entry point ───────────────────────────────────────────────────────────
