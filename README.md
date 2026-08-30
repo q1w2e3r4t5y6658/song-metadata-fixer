@@ -1,102 +1,99 @@
-# Song Metadata Fixer
+# 歌曲元数据修复工具
 
-Fix incorrect / missing audio metadata (mp3 & m4a) by looking up the correct
-title, artists, album, album artist and year — and optionally embedding the
-local cover art and lyrics — from Chinese music platforms in priority order:
+自动修复丢失或错误的音频元数据（mp3 / m4a）。通过以下平台按优先级顺序查找正确的
+标题、歌手、专辑、专辑歌手和发行年份，并选择性嵌入本地封面和歌词：
 
-1. **网易云音乐 (NetEase Cloud Music)**
-2. **QQ音乐 (QQ Music)**
-3. **酷狗音乐 (Kugou)**
-4. **哔哩哔哩 (Bilibili)**
+1. **网易云音乐**
+2. **QQ音乐**
+3. **酷狗音乐**
+4. **哔哩哔哩**
 
-## Why?
+## 为什么要用这个工具？
 
-Many files downloaded from Chinese mirrors carry wrong tags: the uploader /
-label name ("索尼音乐中国", "JLRS日落fm", "云端音乐铺"…) is written as the
-*artist*, the *album* is empty (`?`), or the whole tag set is missing.
+从国内镜像站点下载的文件常常带有错误的标签：上传者或电台名（如"索尼音乐中国"、
+"JLRS日落fm"、"云端音乐铺"）被写成了**歌手**，**专辑**字段为空（`?`），甚至整套
+元数据都缺失。
 
-This tool searches the platforms, matches the result against the file name
-(`Title_Artist.ext`), and writes clean metadata back into the file.
+本工具会搜索各平台，将结果与文件名（`标题_歌手.ext`）进行匹配，并把干净、正确的
+元数据写回音频文件。
 
-## Features
+## 功能特性
 
-- Searches NetEase → QQ Music → Kugou → Bilibili in order, falling back when no reliable match is found.
-- Fuzzy title/artist matching (Unicode-normalized), tolerant of extra annotations like `(为你而战)`, `【洛天依原创】`, mojibake-safe.
-- Filters out junk versions (karaoke / 伴奏 / 网友改编 / 变速 / 拼接 / Live …).
-- Merges artists from the filename when the platform result truncates them.
-- Writes `Title / Artist / Album / AlbumArtist / Year`:
-  - **mp3** → ID3v2 (`TIT2/TPE1/TALB/TPE2/TDRC`)
-  - **m4a** → iTunes atoms (`©nam/©ART/©alb/aART/©day`)
-- Embeds local **cover** (`Covers/<name>-xxxx.jpg`) and **lyrics** (`Lyrics/<name>.lrc`) when present.
-- **Dry-run mode** — preview every decision without touching files.
-- Automatically **skips** files with no reliable match and reports them.
-- Backs up the original tags before writing, and caches search results on disk.
+- 依次搜索 网易云 → QQ音乐 → 酷狗 → 哔哩哔哩，未找到可靠匹配时自动降级到下一平台。
+- 模糊标题/歌手匹配（Unicode 归一化），兼容"（为你而战）"、"【洛天依原创】"等附加标注，乱码安全。
+- 过滤垃圾版本（卡拉OK / 伴奏 / 网友改编 / 变速 / 拼接 / Live 等）。
+- 当平台结果截断了歌手名单时，自动从文件名合并补充。
+- 写入 `标题 / 歌手 / 专辑 / 专辑歌手 / 年份`：
+  - **mp3** → ID3v2（`TIT2/TPE1/TALB/TPE2/TDRC`）
+  - **m4a** → iTunes 原子（`©nam/©ART/©alb/aART/©day`）
+- 自动嵌入本地**封面**（`Covers/<文件名>-xxxx.jpg`）与**歌词**（`Lyrics/<文件名>.lrc`），若存在。
+- **预演模式（Dry-run）**——先预览每条匹配结果，不修改任何文件。
+- 无可靠匹配的文件会**自动跳过并报告**，绝不乱猜。
+- 写入前备份原始标签，并在磁盘缓存搜索结果，重复运行速度极快。
 
-## Requirements
+## 环境要求
 
 - Python 3.8+
-- [`mutagen`](https://pypi.org/project/mutagen/) and [`requests`](https://pypi.org/project/requests/)
+- [`mutagen`](https://pypi.org/project/mutagen/) 和 [`requests`](https://pypi.org/project/requests/)
 
 ```bash
 pip install mutagen requests
 ```
 
-## Usage
+## 使用方法
 
-File name convention: `Song Title_Artist.ext` (multiple artists separated by `_` or ` _ `).
+文件名约定：`歌曲标题_歌手.ext`（多个歌手用 `_` 或 ` _ ` 分隔）。
 
 ```bash
-# show metadata to be written (writes nothing)
+# 预演：只显示将要写入的元数据，不写入任何内容
 python fix_metadata.py --dry
 
-# write metadata (default folder: ~/Desktop/music)
+# 正式写入（默认目录：~/Desktop/music）
 python fix_metadata.py
 
-# another folder
-python fix_metadata.py --dir "D:\Music\Songs"
+# 指定其他音乐目录
+python fix_metadata.py --dir "D:\Music\歌曲"
 
-# only some files
+# 只处理部分文件
 python fix_metadata.py --files "Animals_Maroon 5.m4a"
 
-# dry-run on a subset
+# 在指定目录下预演部分文件
 python fix_metadata.py --dry --dir "D:\Music" --files "A.mp3" "B.m4a"
 ```
 
-### Folder layout (optional)
+### 推荐的目录结构（可选）
 
 ```
 music/
-├── Covers/     # cover images, named <audio-basename>-anything.jpg
-├── Lyrics/     # .lrc files, named <audio-basename>.lrc
+├── Covers/     # 封面图片，命名 <音频文件名>-任意.jpg
+├── Lyrics/     # .lrc 歌词文件，命名 <音频文件名>.lrc
 └── *.mp3 / *.m4a
 ```
 
-## How it works
+## 工作原理
 
-1. Parse `Title_Artist` from each file name.
-2. For each platform in order, search `"Title Artist"` (then `"Title"` alone).
-3. Score candidates by fuzzy title + artist similarity; penalize junk versions.
-4. Take the first reliable match; otherwise move to the next platform.
-5. Bilibili is the fallback for tracks that only exist there (Chinese VOCALOID originals, dance covers…).
-6. Write tags; embed local cover/lyrics if available.
+1. 从文件名解析出 `标题_歌手`。
+2. 依次在每个平台搜索 `"标题 歌手"`（若无可信结果再退化为仅搜索 `"标题"`）。
+3. 根据模糊标题相似度 + 歌手相似度给候选结果打分；垃圾版本会被扣分。
+4. 取首个可靠匹配；否则进入下一平台。
+5. 哔哩哔哩作为兜底，用于只存在于 B 站的曲目（中文 VOCALOID 原创、翻唱等）。
+6. 写入标签，并在存在时嵌入本地封面/歌词。
 
-## Outputs
+## 输出文件
 
-| File | Location | Purpose |
+| 文件 | 位置 | 用途 |
 |---|---|---|
-| `music_metadata_backup.json` | `%TEMP%` | original tags before writing (rollback if needed) |
-| `music_fix_report.json` | `%TEMP%` | per-file decisions (match/skip/error) |
-| `music_search_cache.json` | `%TEMP%` | cached platform search results (re-runs are fast) |
+| `music_metadata_backup.json` | `%TEMP%` | 写入前的原始标签（需要时可回滚） |
+| `music_fix_report.json` | `%TEMP%` | 逐文件的匹配结果（成功/跳过/出错） |
+| `music_search_cache.json` | `%TEMP%` | 平台搜索结果缓存（重复运行更快） |
 
-## Caveats
+## 注意事项
 
-- Platform search APIs are unofficial and rate-limited; NetEase may intermittently
-  return nothing, in which case the tool falls through to the next platform.
-  Re-running the tool is safe (previous searches are cached).
-- Files with no reliable match are **skipped and reported**, never guessed.
-- The tool has no Bilibili album data (it's a video platform), so Bilibili-only
-  tracks get title/artist only.
+- 平台搜索 API 均为非官方接口且有限流；网易云偶发返回空结果，此时工具会自动降级到下一平台。
+  重复运行是安全的（历史搜索结果已缓存）。
+- 无可靠匹配的文件会被**跳过并报告**，而不会写入猜测数据。
+- 哔哩哔哩是视频平台、没有专辑信息，因此只命中 B 站的曲目仅写入标题和歌手。
 
-## License
+## 许可证
 
 [MIT](LICENSE)
